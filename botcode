@@ -1,34 +1,170 @@
+import datetime
 import discord
-import os
-import requests
-import json
+from discord.ext import commands
 
-client = discord.Client()
+#For logging debug info and such
+import logging
+logger = logging.getLogger('discord')
+logger.setLevel(logging.DEBUG)
+handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
+handler.setFormatter(logging.Formatter('%(asctimes:%(levelname)s:%(name)s: %(messages)s'))
+
+#Creates the connection to the discord server
+client = commands.Bot(command_prefix = '.')
+
 # Token variable
-BOT_TOKEN='ODE1MjY4NDM5NjEwNDkwODgx.YDp75g.F-aGjpGmaKFHpluO6DqmjnNah-4'
+BOT_TOKEN = 'ODE1NDQyMDg4NjE5Mjc4NDA2.YDsdoA.Afqcjm3QQwwLTEx03B9XNxhIjSc'
 
-def get_quote():
-    response = requests.get("https://zenquotes.io/api/random")
-    json_data = json.loads(response.text)
-    quote = json_data[0]['q'] + " -" + json_data[0]['a']
-    return(quote)
-
+#Announce bot is ready
 @client.event
 async def on_ready():
-    print('We have logged in as {0.user}'.format(client))
+    print('Logged in as {0.user}. Ready to interact.'.format(client))
 
-@client.event
-async def on_message(message):
 
-  if message.author == client.user:
+#Variables
+hwName = []
+hwDueDate = []
+hwCounter = 0   #counter for assignment number
+
+#Functions
+def sortAssignments():
+  global hwName
+  global hwDueDate
+
+  zippedHW = zip(hwName, hwDueDate)
+  sortedZip = sorted(zippedHW, key=lambda x:x[1])
+
+  for index in range(hwCounter):
+    hwName[index] = sortedZip[index][0]
+    hwDueDate[index] = sortedZip[index][1]
+  
+  return
+
+def writeAssignments():
+  global hwName
+  global hwDueDate
+
+  f = open("assignments.txt", "w")
+  for index in range(hwCounter):
+    f.write(hwName[index], " ", hwDueDate[index])
+  f.close()
+  return
+
+def readAssignments():
+  global hwName
+  global hwDueDate
+
+  
+
+#Commands
+
+#ping command, gets latency between bot receiving command and responding
+@client.command()
+async def ping(ctx):
+  '''
+  Debug command to find latency of the bot
+  '''
+  await ctx.send(f'pong! {round(client.latency * 1000)}ms')
+
+
+
+#creates new assignment
+@client.command()
+async def createAssignment(ctx, name:str, dueMonth:int, dueDay:int, dueYear:int):
+  '''
+  Creates an assignment. Input required is name, month (1-12), day (1-31), and year (YYYY)
+  '''
+  global hwCounter
+
+  #check for improper input
+  if ((dueMonth < 1) or (dueMonth > 12)):
+    await ctx.send("Invalid number entered for month")
+    return
+  elif ((dueDay < 1) or (dueDay > 31)):
+    await ctx.send("Invalid number entered for day")
     return
 
-  if message.content.startswith('$hello'):
-    await message.channel.send('Hello!')
+  #put information into array
+  hwName.append(name)
+  dueDate = datetime.date(dueYear, dueMonth, dueDay)
+  hwDueDate.append(dueDate)
+  
+  #return a response
+  await ctx.send("Assignment created with name {0} and due date {1}".format(hwName[hwCounter], hwDueDate[hwCounter]))
+  
+  #increase assignment counter
+  hwCounter += 1
+  return
+
+
+#list assignments
+@client.command()
+async def listAssignments(ctx):
+  if (hwCounter == 0):
+    await ctx.send("No assignments exist")
     return
+  else:
+    sortAssignments()
+    for index in range(hwCounter):
+      #await ctx.send("index is {}. hwCounter is {}".format(index, hwCounter))
+      await ctx.send("Assignment {}: {} due {}\n".format((index+1), hwName[index], hwDueDate[index]))
     
-  if message.content.startswith('$inspire'):
-    quote = get_quote()
-    await message.channel.send(quote)
+  await ctx.send("{} total assignment(s)".format(hwCounter))
+  return
+
+
+#delete assignment
+@client.command()
+async def deleteAssignment(ctx, *numbers:int):
+  '''
+  Will delete multiple assignments from list. Enter their position from listAssignments function.
+  '''
+  
+  global hwName
+  global hwDueDate
+  global hwCounter
+  sortedNumbers = sorted(numbers, reverse=True)
+
+  for index in range(len(numbers)):
+    hwName.pop((sortedNumbers[index])-1)
+    hwDueDate.pop((sortedNumbers[index])-1)
+    hwCounter -= 1
+  
+  await ctx.send("{} assignments deleted.".format(len(numbers)))
+  return
+
+
+
+
+nums = ["{}\N{COMBINING ENCLOSING KEYCAP}".format(num) for num in range(1, 10)]
+nums.append("🔟")
+
+@client.command()
+async def poll(ctx, question, *responses):
+  '''
+  Creates a poll. Input required is the question (must be in double quotes), and between 1 and 10 options.
+  '''
+  if len(responses) > 10: #let max responses be length of 0-10, 10-20,..., 90-100
+    await ctx.send("You can not exceed 10 possible responses")
+  elif len(responses) == 0:
+    await ctx.send("You must supply options")
+  else:
+   pollForm = discord.Embed(title = question, description = "React to vote!")
+                    
+   options = [("Choices:", "\n".join([f"{nums[i]}{responses[i]}" for i, option
+   in enumerate(responses)]), False)]
+   
+   for name, value, inline in options:
+     pollForm.add_field(name = name, value = value, inline = inline)
+
+   #show whoever made the poll (name and pic)
+   pollForm.set_author(name = ctx.author.display_name, icon_url = ctx.author.avatar_url)
+
+   await ctx.send(embed = pollForm)
+
+
+
+
+
 
 client.run(BOT_TOKEN)
