@@ -1,0 +1,13 @@
+class event:
+
+  def __init__(self, Date, Name, Num, dataval = None):
+    self.dataval = dataval
+    self.nextval = None
+
+    self._dueDate = Date
+    self._name = Name
+    self._classNum = Num
+
+class eventList:
+  def __init__(self):
+        self.headval = None
