@@ -13,7 +13,7 @@ handler.setFormatter(logging.Formatter('%(asctimes:%(levelname)s:%(name)s: %(mes
 client = commands.Bot(command_prefix = '.')
 
 # Token variable
-BOT_TOKEN = 'ODE1NDQyMDg4NjE5Mjc4NDA2.YDsdoA.Afqcjm3QQwwLTEx03B9XNxhIjSc'
+BOT_TOKEN = 
 
 #Announce bot is ready
 @client.event
